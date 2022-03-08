@@ -2,9 +2,10 @@
 YAML Parser implemented in this file is used to generate a graph from
 the provided yaml build file.
 """
-from yaml import safe_load
+import os
 
-from worknode import WorkNode, TaskType, ExecutionType, Input
+from yaml import safe_load
+from worknode import WorkNode, TaskType, ExecutionType, Input, Output, Condition
 
 
 class Parser:
@@ -56,10 +57,25 @@ class Parser:
         """
         task_node = WorkNode()
         task_node.type = TaskType.task
-        task_node.function = WorkNode.time_function
-        task_node.inputs = Input()
-        task_node.inputs.functionInput = data['Inputs']['FunctionInput']
-        task_node.inputs.executionTime = int(data['Inputs']['ExecutionTime'])
+        if 'Condition' in data:
+            task_node.condition = Condition(data['Condition'])
+        if data['Function'] == "TimeFunction":
+            task_node.function = WorkNode.time_function
+            task_node.inputs = Input()
+            task_node.inputs.functionInput = data['Inputs']['FunctionInput']
+            task_node.inputs.executionTime = int(data['Inputs']['ExecutionTime'])
+        elif data['Function'] == "DataLoad":
+            task_node.function = WorkNode.dataload_function
+            task_node.inputs = Input()
+            if 'Filename' in data['Inputs']:
+                file_dir = os.path.dirname(os.path.abspath(self.filename))
+                input_file = os.path.join(file_dir, data['Inputs']['Filename'])
+                task_node.inputs.fileName = input_file
+            if 'Outputs' in data:
+                task_node.outputs = Output()
+                task_node.outputs.DataTable = 'DataTable' in data['Outputs']
+                task_node.outputs.NoOfDefects = 'DataTable' in data['Outputs']
+
         return task_node
 
     def parse(self):
@@ -76,7 +92,10 @@ class Parser:
                 if self.data[root.name]['Execution'] == 'Sequential' else ExecutionType.concurrent
             root.activities = self._parse_util_flow(self.data[root.name], root)
         else:
-            root.function = WorkNode.time_function
+            if self.data['Function'] == 'TimeFunction':
+                root.function = WorkNode.time_function
+            elif self.data['Function'] == 'DataLoad':
+                root.function = WorkNode.dataload_function
             root.inputs = Input()
             root.inputs.functionInput = self.data[root.name]['FunctionInput']
             root.inputs.executionTime = int(self.data[root.name]['ExecutionTime'])

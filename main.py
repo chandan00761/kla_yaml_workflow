@@ -7,7 +7,7 @@ input file with output.txt appended.
 
 import argparse
 import logging
-from datetime import datetime
+import os
 from parser import Parser
 
 # getting yaml file from argument
@@ -27,6 +27,11 @@ args.filename = './DataSet/Milestone1/Milestone1B.yaml'
 # args.filename = './DataSet/Milestone2/Milestone2B.yaml'
 
 kla_parser = Parser(filename=args.filename)
+
+logfile = args.filename + "output.txt"
+
+if os.path.exists(logfile):
+    os.remove(logfile)
 
 logging.basicConfig(filename=args.filename+"output.txt", level=logging.DEBUG, format="")
 

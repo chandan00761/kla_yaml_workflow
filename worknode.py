@@ -39,7 +39,7 @@ class WorkNode:
     def __init__(self):
         self.name = None
         self.type = TaskType.task
-        self.execution = ExecutionType.sequential
+        self.execution = None
         self.activities = []
         self.function = None
         self.inputs = None

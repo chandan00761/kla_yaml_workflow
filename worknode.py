@@ -8,12 +8,10 @@ import threading
 import time
 from enum import Enum
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, wait
 
 
 memo = {}
-
-lock = threading.Lock()
 
 
 class TaskType(Enum):
@@ -102,39 +100,45 @@ class WorkNode:
             memo[self.path+".NoOfDefects"] = lines-1
 
     def binning_function(self):
-        rules = []
-        with open(self.inputs.ruleFileName) as file:
-            lines = 0
-            for line in file:
-                lines = lines + 1
-                if lines == 1:
-                    continue
-                line = line.split(",")
-                rule = [int(line[0]), -999999, 999999]
-                line = line[1].split(" ")
-                if line[0] == 'Signal' and line[1] == '<':
-                    rule[2] = int(line[2])
-                else:
-                    rule[1] = int(line[2])
-                    rule[2] = int(line[6])
-                rules.append(rule)
-        key = self.inputs.dataSet
-        key = key[2:len(key)-1]
-        data_set = []
-        for data in memo[key]:
-            row = [x for x in data]
-            data_set.append(row)
-        for data in data_set:
-            if len(data) == 4:
-                data.append(-1)
-            for rule in rules:
-                if rule[1] < data[-2] < rule[2]:
-                    data[-1] = rule[0]
-
+        self.lock.acquire(blocking=True)
+        try:
+            rules = []
+            with open(self.inputs.ruleFileName, 'r') as file:
+                lines = 0
+                for line in file:
+                    lines = lines + 1
+                    if lines == 1:
+                        continue
+                    if line == "\n":
+                        continue
+                    line = line.split(",")
+                    rule = [int(line[0]), -999999, 999999]
+                    line = line[1].split(" ")
+                    if line[0] == 'Signal' and line[1] == '<':
+                        rule[2] = int(line[2])
+                    else:
+                        rule[1] = int(line[2])
+                        rule[2] = int(line[6])
+                    rules.append(rule)
+            key = self.inputs.dataSet
+            key = key[2:len(key)-1]
+            data_set = []
+            for data in memo[key]:
+                row = [x for x in data]
+                data_set.append(row)
+            for data in data_set:
+                if len(data) == 4:
+                    data.append(-1)
+                for rule in rules:
+                    if rule[1] < data[-2] < rule[2]:
+                        data[-1] = rule[0]
+        except Exception as e:
+            print("exception" + e)
         if self.outputs.BinningResultsTable:
             memo[self.path+".BinningResultsTable"] = data_set
         if self.outputs.NoOfDefects:
             memo[self.path+".NoOfDefects"] = len(data_set)
+        self.lock.release()
 
     def merge_results_function(self):
         precedence = []
@@ -189,6 +193,7 @@ class WorkNode:
         self.condition = None
         self.outputs: Output = None
         self.lock = threading.Lock()
+        self.executor: ThreadPoolExecutor = None
 
     def run(self):
         """
@@ -209,8 +214,9 @@ class WorkNode:
                 for task in self.activities:
                     task.run()
             else:
-                executor = ThreadPoolExecutor(max_workers=len(self.activities))
+                self.executor = ThreadPoolExecutor(max_workers=len(self.activities))
+                futures = []
                 for task in self.activities:
-                    executor.submit(task.run)
-                executor.shutdown(wait=True, cancel_futures=False)
+                    futures.append(self.executor.submit(task.run))
+                self.executor.shutdown(wait=True, cancel_futures=False)
         logging.info(f'{datetime.now()};{self.path} Exit')

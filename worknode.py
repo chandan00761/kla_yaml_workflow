@@ -101,39 +101,36 @@ class WorkNode:
 
     def binning_function(self):
         self.lock.acquire(blocking=True)
-        try:
-            rules = []
-            with open(self.inputs.ruleFileName, 'r') as file:
-                lines = 0
-                for line in file:
-                    lines = lines + 1
-                    if lines == 1:
-                        continue
-                    if line == "\n":
-                        continue
-                    line = line.split(",")
-                    rule = [int(line[0]), -999999, 999999]
-                    line = line[1].split(" ")
-                    if line[0] == 'Signal' and line[1] == '<':
-                        rule[2] = int(line[2])
-                    else:
-                        rule[1] = int(line[2])
-                        rule[2] = int(line[6])
-                    rules.append(rule)
-            key = self.inputs.dataSet
-            key = key[2:len(key)-1]
-            data_set = []
-            for data in memo[key]:
-                row = [x for x in data]
-                data_set.append(row)
-            for data in data_set:
-                if len(data) == 4:
-                    data.append(-1)
-                for rule in rules:
-                    if rule[1] < data[-2] < rule[2]:
-                        data[-1] = rule[0]
-        except Exception as e:
-            print("exception" + e)
+        rules = []
+        with open(self.inputs.ruleFileName, 'r') as file:
+            lines = 0
+            for line in file:
+                lines = lines + 1
+                if lines == 1:
+                    continue
+                if line == "\n":
+                    continue
+                line = line.split(",")
+                rule = [int(line[0]), -999999, 999999]
+                line = line[1].split(" ")
+                if line[0] == 'Signal' and line[1] == '<':
+                    rule[2] = int(line[2])
+                else:
+                    rule[1] = int(line[2])
+                    rule[2] = int(line[6])
+                rules.append(rule)
+        key = self.inputs.dataSet
+        key = key[2:len(key)-1]
+        data_set = []
+        for data in memo[key]:
+            row = [x for x in data]
+            data_set.append(row)
+        for data in data_set:
+            if len(data) == 4:
+                data.append(-1)
+            for rule in rules:
+                if rule[1] < data[-2] < rule[2]:
+                    data[-1] = rule[0]
         if self.outputs.BinningResultsTable:
             memo[self.path+".BinningResultsTable"] = data_set
         if self.outputs.NoOfDefects:

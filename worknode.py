@@ -132,7 +132,30 @@ class WorkNode:
             memo[self.path+".NoOfDefects"] = len(data_set)
 
     def merge_results_function(self):
-        pass
+        precedence = []
+        with open(self.inputs.precedenceFile) as file:
+            precedence = [int(x) for x in file.readline().split(" >> ")]
+        precedence.append(-1)
+        datasets = []
+        for dataset in self.inputs.dataSets:
+            key = dataset[2:len(dataset)-1]
+            datasets.append(memo[key])
+
+        merged_result = []
+        for i in range(len(datasets[0])):
+            row = [datasets[0][i][0], datasets[0][i][1], datasets[0][i][2], datasets[0][i][3], -1]
+            for p in precedence:
+                flag = False
+                for dataset in datasets:
+                    if dataset[-1] == p:
+                        row[-1] = p
+                        flag = True
+                        break
+                if flag:
+                    break
+            merged_result.append(row)
+
+        memo[self.path + ".MergedResults"] = merged_result
 
     def export_result_function(self):
         pass

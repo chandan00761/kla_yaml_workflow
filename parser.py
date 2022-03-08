@@ -92,7 +92,8 @@ class Parser:
         elif data['Function'] == 'MergeResults':
             task_node.function = WorkNode.merge_results_function
             task_node.inputs = Input()
-            task_node.inputs.precedenceFile = data['Inputs']['PrecedenceFile']
+            file_dir = os.path.dirname(os.path.abspath(self.filename))
+            task_node.inputs.precedenceFile = os.path.join(file_dir, data['Inputs']['PrecedenceFile'])
             for key, value in data['Inputs'].items():
                 if key.startswith('DataSet'):
                     task_node.inputs.dataSets.append(value)

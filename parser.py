@@ -74,7 +74,25 @@ class Parser:
             if 'Outputs' in data:
                 task_node.outputs = Output()
                 task_node.outputs.DataTable = 'DataTable' in data['Outputs']
-                task_node.outputs.NoOfDefects = 'DataTable' in data['Outputs']
+                task_node.outputs.NoOfDefects = 'NoOfDefects' in data['Outputs']
+        elif data['Function'] == "Binning":
+            task_node.function = WorkNode.binning_function
+            task_node.inputs = Input()
+            if "Condition" in data:
+                task_node.condition = Condition(data["Condition"])
+            file_dir = os.path.dirname(os.path.abspath(self.filename))
+            rule_file = os.path.join(file_dir, data['Inputs']['RuleFilename'])
+            task_node.inputs.ruleFileName = rule_file
+            task_node.inputs.dataSet = data['Inputs']['DataSet']
+            if 'Outputs' in data:
+                task_node.outputs = Output()
+                task_node.outputs.DataTable = 'DataTable' in data['Outputs']
+                task_node.outputs.BinningResultsTable = 'BinningResultsTable' in data['Outputs']
+                task_node.outputs.NoOfDefects = 'NoOfDefects' in data['Outputs']
+        elif data['Function'] == 'MergeResults':
+            task_node.function = WorkNode.merge_results_function
+        elif data['Function'] == 'ExportResults':
+            task_node.function = WorkNode.export_result_function
 
         return task_node
 
@@ -96,6 +114,12 @@ class Parser:
                 root.function = WorkNode.time_function
             elif self.data['Function'] == 'DataLoad':
                 root.function = WorkNode.dataload_function
+            elif self.data['Function'] == 'Binning':
+                root.function = WorkNode.binning_function
+            elif self.data['Function'] == 'MergeResults':
+                root.function = WorkNode.merge_results_function
+            elif self.data['Function'] == 'ExportResults':
+                root.function = WorkNode.export_result_function
             root.inputs = Input()
             root.inputs.functionInput = self.data[root.name]['FunctionInput']
             root.inputs.executionTime = int(self.data[root.name]['ExecutionTime'])

@@ -5,7 +5,6 @@ This file contains the required classes and methods to generate a workflow graph
 import os
 import logging
 import time
-import pandas as pd
 from enum import Enum
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
@@ -51,15 +50,18 @@ class Input:
     Represents the input passed to the WorkNode.
     """
     def __init__(self):
-        self.functionInput: str = None
+        self.functionInput = None
         self.executionTime = None
         self.fileName = None
+        self.ruleFileName = None
+        self.dataSet = None
 
 
 class Output:
     def __init__(self):
         self.DataTable = True
         self.NoOfDefects = True
+        self.BinningResultsTable = False
 
 
 class WorkNode:
@@ -79,14 +81,28 @@ class WorkNode:
     def dataload_function(self):
         logging.info(
             f'{datetime.now()};{self.path} Executing DataLoad ({os.path.basename(self.inputs.fileName)})')
-        data = 0
+        data = []
+        lines = 0
         with open(self.inputs.fileName, 'r') as file:
-            data = len(file.readlines())
-        # if we want to do something with the data we can do here
-        # if self.outputs.DataTable:
-        #     memo[self.path+"DataTable"] = data
+            for line in file:
+                lines = lines + 1
+                if lines == 1:
+                    continue
+                line = [int(x) for x in line.split(",")]
+                data.append(line)
+        if self.outputs.DataTable:
+            memo[self.path+".DataTable"] = data
         if self.outputs.NoOfDefects:
-            memo[self.path+".NoOfDefects"] = data-1
+            memo[self.path+".NoOfDefects"] = lines-1
+
+    def binning_function(self):
+        pass
+
+    def merge_results_function(self):
+        pass
+
+    def export_result_function(self):
+        pass
 
     def __init__(self):
         """
@@ -100,7 +116,7 @@ class WorkNode:
         self.execution = None
         self.activities = []
         self.function = None
-        self.inputs: Input = None
+        self.inputs = None
         self.condition = None
         self.outputs = None
 

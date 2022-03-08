@@ -4,6 +4,7 @@ This file contains the required classes and methods to generate a workflow graph
 
 import os
 import logging
+import threading
 import time
 from enum import Enum
 from datetime import datetime
@@ -11,6 +12,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 memo = {}
+
+lock = threading.Lock()
 
 
 class TaskType(Enum):
@@ -72,7 +75,6 @@ class WorkNode:
     """
     Denotes a node in the workflow graph.
     """
-
     def time_function(self):
         key = self.inputs.functionInput
         if self.inputs and self.inputs.functionInput.startswith("$"):
@@ -118,12 +120,15 @@ class WorkNode:
                 rules.append(rule)
         key = self.inputs.dataSet
         key = key[2:len(key)-1]
-        data_set = memo[key]
+        data_set = []
+        for data in memo[key]:
+            row = [x for x in data]
+            data_set.append(row)
         for data in data_set:
             if len(data) == 4:
                 data.append(-1)
             for rule in rules:
-                if rule[1] < data[-1] < rule[2]:
+                if rule[1] < data[-2] < rule[2]:
                     data[-1] = rule[0]
 
         if self.outputs.BinningResultsTable:
@@ -147,7 +152,7 @@ class WorkNode:
             for p in precedence:
                 flag = False
                 for dataset in datasets:
-                    if dataset[-1] == p:
+                    if dataset[i][-1] == p:
                         row[-1] = p
                         flag = True
                         break
@@ -158,7 +163,15 @@ class WorkNode:
         memo[self.path + ".MergedResults"] = merged_result
 
     def export_result_function(self):
-        pass
+        key = self.inputs.defectTable
+        key = key[2:len(key)-1]
+        with open(self.inputs.fileName, "w") as file:
+            file.write("Id,X,Y,Signal,Bincode\n")
+            data = memo[key]
+            for row in data:
+                row = [str(x) for x in row]
+                file.write(",".join(row))
+                file.write("\n")
 
     def __init__(self):
         """
@@ -175,6 +188,7 @@ class WorkNode:
         self.inputs: Input = None
         self.condition = None
         self.outputs: Output = None
+        self.lock = threading.Lock()
 
     def run(self):
         """

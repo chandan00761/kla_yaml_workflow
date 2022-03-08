@@ -103,7 +103,8 @@ class Parser:
         elif data['Function'] == 'ExportResults':
             task_node.function = WorkNode.export_result_function
             task_node.inputs = Input()
-            task_node.inputs.fileName = data['Inputs']['FileName']
+            file_dir = os.path.dirname(os.path.abspath(self.filename))
+            task_node.inputs.fileName = os.path.join(file_dir, data['Inputs']['FileName'])
             task_node.inputs.defectTable = data['Inputs']['DefectTable']
         return task_node
 

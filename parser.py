@@ -2,7 +2,7 @@
 YAML Parser implemented in this file is used to generate a graph from
 the provided yaml build file.
 """
-from yaml import safe_load, FullLoader
+from yaml import safe_load
 
 from worknode import WorkNode, TaskType, ExecutionType, Input
 
@@ -13,30 +13,47 @@ class Parser:
     """
 
     def __init__(self, filename):
+        """
+        Given filename read the file and parse the yaml file.
+        :param filename:
+        """
         self.filename = filename
         with open(self.filename, 'r') as file:
             self.data: dict = safe_load(file)
 
-    def _parse_util_flow(self, data: dict):
+    def _parse_util_flow(self, data: dict, root):
+        """
+        function to parse the flow nodes
+        :param data:
+        :param root:
+        :return:
+        """
         activities = []
 
         for key, value in data['Activities'].items():
             if value['Type'] == 'Task':
                 task_node = self._parse_util_task(value)
                 task_node.name = key
+                task_node.path += root.path + f'.{key}'
                 activities.append(task_node)
             else:
                 flow_node = WorkNode()
                 flow_node.name = key
+                flow_node.path += root.path + f'.{key}'
                 flow_node.type = TaskType.flow
                 flow_node.execution = ExecutionType.sequential if value[
                                                                       'Execution'] == 'Sequential' else ExecutionType.concurrent
-                flow_node.activities = self._parse_util_flow(value)
+                flow_node.activities = self._parse_util_flow(value, flow_node)
                 activities.append(flow_node)
 
         return activities
 
     def _parse_util_task(self, data: dict):
+        """
+        function to parse the task nodes
+        :param data:
+        :return:
+        """
         task_node = WorkNode()
         task_node.type = TaskType.task
         task_node.function = WorkNode.time_function
@@ -46,13 +63,18 @@ class Parser:
         return task_node
 
     def parse(self):
+        """
+        uses the parsed yaml data to generate workflow graph of WorkNodes
+        :return:
+        """
         root = WorkNode()
         root.name = list(self.data.keys())[0]
+        root.path = root.name
         root.type = TaskType.flow if self.data[root.name]['Type'] == 'Flow' else TaskType.task
         if root.type == TaskType.flow:
             root.execution = ExecutionType.sequential \
                 if self.data[root.name]['Execution'] == 'Sequential' else ExecutionType.concurrent
-            root.activities = self._parse_util_flow(self.data[root.name])
+            root.activities = self._parse_util_flow(self.data[root.name], root)
         else:
             root.function = WorkNode.time_function
             root.inputs = Input()

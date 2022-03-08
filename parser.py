@@ -91,6 +91,14 @@ class Parser:
                 task_node.outputs.NoOfDefects = 'NoOfDefects' in data['Outputs']
         elif data['Function'] == 'MergeResults':
             task_node.function = WorkNode.merge_results_function
+            task_node.inputs = Input()
+            task_node.inputs.precedenceFile = data['Inputs']['PrecedenceFile']
+            for key, value in data['Inputs'].items():
+                if key.startswith('DataSet'):
+                    task_node.inputs.dataSets.append(value)
+            task_node.outputs = Output()
+            task_node.outputs.MergedResults = 'MergedResults' in data['Outputs']
+            task_node.outputs.NoOfDefects = 'NoOfDefects' in data['Outputs']
         elif data['Function'] == 'ExportResults':
             task_node.function = WorkNode.export_result_function
 

@@ -55,13 +55,17 @@ class Input:
         self.fileName = None
         self.ruleFileName = None
         self.dataSet = None
+        self.precedenceFile = None
+        self.dataSets = []
+        self.defectTable = None
 
 
 class Output:
     def __init__(self):
-        self.DataTable = True
-        self.NoOfDefects = True
+        self.DataTable = False
+        self.NoOfDefects = False
         self.BinningResultsTable = False
+        self.MergedResults = False
 
 
 class WorkNode:

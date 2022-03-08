@@ -8,9 +8,9 @@ import threading
 import time
 from enum import Enum
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import ThreadPoolExecutor
 
-
+# a dictionary that contains output of tasks with their absolute path along with type of output as key
 memo = {}
 
 
@@ -31,10 +31,17 @@ class ExecutionType(Enum):
 
 
 class Condition:
+    """
+    A string denoting an expression that returns either true or false.
+    """
     def __init__(self, condition: str):
         self.condition = condition
 
     def is_valid(self):
+        """
+        parses the expression string and returns it value
+        :return: bool
+        """
         elements = self.condition.split(" ")
         key = elements[0]
         check = elements[1]
@@ -49,6 +56,14 @@ class Condition:
 class Input:
     """
     Represents the input passed to the WorkNode.
+    functionInput : function to run when the WorkNode is run.
+    executionTime : execution time of the function.
+    fileName : input or output file path for stdin and stdout.
+    ruleFileName: path of file containing rules for binning.
+    dataSet: dataSet for binning
+    precedenceFile: precedence rules to follow for binning during merging.
+    dataSets: list of dataSets for merging.
+    defectTable: data to export as csv
     """
     def __init__(self):
         self.functionInput = None
@@ -73,9 +88,14 @@ class WorkNode:
     """
     Denotes a node in the workflow graph.
     """
+
     def time_function(self):
+        """
+        A time function simply sleeps for a specified amount of time.
+        """
         key = self.inputs.functionInput
         if self.inputs and self.inputs.functionInput.startswith("$"):
+            # if the function is actually a value of some task
             key = key[2:len(key)-1]
             logging.info(f'{datetime.now()};{self.path} Executing TimeFunction ({memo[key]}, {self.inputs.executionTime})')
         else:
@@ -83,6 +103,9 @@ class WorkNode:
         time.sleep(self.inputs.executionTime)
 
     def dataload_function(self):
+        """
+        Loads data from self.inputs.fileName to memory for operations.
+        """
         logging.info(
             f'{datetime.now()};{self.path} Executing DataLoad ({os.path.basename(self.inputs.fileName)})')
         data = []
@@ -100,6 +123,9 @@ class WorkNode:
             memo[self.path+".NoOfDefects"] = lines-1
 
     def binning_function(self):
+        """
+        Assigns bins to data according to the rules specified in ruleFileName
+        """
         self.lock.acquire(blocking=True)
         rules = []
         with open(self.inputs.ruleFileName, 'r') as file:
@@ -111,8 +137,10 @@ class WorkNode:
                 if line == "\n":
                     continue
                 line = line.split(",")
+                # rule is [bincode, lower_bound, upper_bound]
                 rule = [int(line[0]), -999999, 999999]
                 line = line[1].split(" ")
+                # this code is not fault tolerant
                 if line[0] == 'Signal' and line[1] == '<':
                     rule[2] = int(line[2])
                 else:
@@ -122,6 +150,7 @@ class WorkNode:
         key = self.inputs.dataSet
         key = key[2:len(key)-1]
         data_set = []
+        # create a new deep copy of data in memo[key] to prevent overwrite
         for data in memo[key]:
             row = [x for x in data]
             data_set.append(row)
@@ -138,6 +167,9 @@ class WorkNode:
         self.lock.release()
 
     def merge_results_function(self):
+        """
+        Assigns bincode after merging all the self.inputs.dataSets according to precedence
+        """
         precedence = []
         with open(self.inputs.precedenceFile) as file:
             precedence = [int(x) for x in file.readline().split(" >> ")]
@@ -149,11 +181,15 @@ class WorkNode:
 
         merged_result = []
         for i in range(len(datasets[0])):
+            # for each row of the datasets
             row = [datasets[0][i][0], datasets[0][i][1], datasets[0][i][2], datasets[0][i][3], -1]
             for p in precedence:
+                # starting from the highest precedence
                 flag = False
+                # check if that bincode has been assigned to some dataset.
                 for dataset in datasets:
                     if dataset[i][-1] == p:
+                        # if assigned no need to check further
                         row[-1] = p
                         flag = True
                         break
@@ -164,6 +200,9 @@ class WorkNode:
         memo[self.path + ".MergedResults"] = merged_result
 
     def export_result_function(self):
+        """
+        Given a defectTable as input write its data to output csv file.
+        """
         key = self.inputs.defectTable
         key = key[2:len(key)-1]
         with open(self.inputs.fileName, "w") as file:
@@ -186,11 +225,11 @@ class WorkNode:
         self.execution = None
         self.activities = []
         self.function = None
-        self.inputs: Input = None
+        self.inputs = None
         self.condition = None
-        self.outputs: Output = None
+        self.outputs = None
         self.lock = threading.Lock()
-        self.executor: ThreadPoolExecutor = None
+        self.executor = None
 
     def run(self):
         """
@@ -199,12 +238,15 @@ class WorkNode:
         """
         logging.info(f'{datetime.now()};{self.path} Entry')
 
+        # check if there is some condition on this WorkNode
         if self.condition and not self.condition.is_valid():
+            # if the condition on this WorkNode is false then skip it
             logging.info(f'{datetime.now()};{self.path} Skipped')
             logging.info(f'{datetime.now()};{self.path} Exit')
             return
 
         if self.type == TaskType.task:
+            # if WorkNode is a single task simply run it.
             self.function(self)
         else:
             if self.execution == ExecutionType.sequential:
@@ -215,5 +257,6 @@ class WorkNode:
                 futures = []
                 for task in self.activities:
                     futures.append(self.executor.submit(task.run))
+                # wait for the tasks to finish
                 self.executor.shutdown(wait=True, cancel_futures=False)
         logging.info(f'{datetime.now()};{self.path} Exit')

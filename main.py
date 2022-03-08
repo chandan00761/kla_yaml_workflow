@@ -17,16 +17,6 @@ args = arg_parser.parse_args()
 
 # creating a Parser to parse yaml
 
-# for testing purpose only
-# args.filename = './DataSet/Examples/Milestone1/Milestone1_Example.yaml'
-# args.filename = './DataSet/Examples/Milestone2/Milestone2_Example.yaml'
-# args.filename = './DataSet/Examples/Milestone3/Milestone3A.yaml'
-# args.filename = './DataSet/Milestone1/Milestone1A.yaml'
-# args.filename = './DataSet/Milestone1/Milestone1B.yaml'
-# args.filename = './DataSet/Milestone2/Milestone2A.yaml'
-# args.filename = './DataSet/Milestone2/Milestone2B.yaml'
-args.filename = './DataSet/Milestone3/Milestone3A.yaml'
-
 kla_parser = Parser(filename=args.filename)
 
 logfile = args.filename + "output.txt"

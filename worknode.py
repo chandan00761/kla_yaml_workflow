@@ -100,7 +100,36 @@ class WorkNode:
             memo[self.path+".NoOfDefects"] = lines-1
 
     def binning_function(self):
-        pass
+        rules = []
+        with open(self.inputs.ruleFileName) as file:
+            lines = 0
+            for line in file:
+                lines = lines + 1
+                if lines == 1:
+                    continue
+                line = line.split(",")
+                rule = [int(line[0]), -999999, 999999]
+                line = line[1].split(" ")
+                if line[0] == 'Signal' and line[1] == '<':
+                    rule[2] = int(line[2])
+                else:
+                    rule[1] = int(line[2])
+                    rule[2] = int(line[6])
+                rules.append(rule)
+        key = self.inputs.dataSet
+        key = key[2:len(key)-1]
+        data_set = memo[key]
+        for data in data_set:
+            if len(data) == 4:
+                data.append(-1)
+            for rule in rules:
+                if rule[1] < data[-1] < rule[2]:
+                    data[-1] = rule[0]
+
+        if self.outputs.BinningResultsTable:
+            memo[self.path+".BinningResultsTable"] = data_set
+        if self.outputs.NoOfDefects:
+            memo[self.path+".NoOfDefects"] = len(data_set)
 
     def merge_results_function(self):
         pass
@@ -120,9 +149,9 @@ class WorkNode:
         self.execution = None
         self.activities = []
         self.function = None
-        self.inputs = None
+        self.inputs: Input = None
         self.condition = None
-        self.outputs = None
+        self.outputs: Output = None
 
     def run(self):
         """

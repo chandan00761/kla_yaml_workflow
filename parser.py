@@ -101,7 +101,9 @@ class Parser:
             task_node.outputs.NoOfDefects = 'NoOfDefects' in data['Outputs']
         elif data['Function'] == 'ExportResults':
             task_node.function = WorkNode.export_result_function
-
+            task_node.inputs = Input()
+            task_node.inputs.fileName = data['Inputs']['FileName']
+            task_node.inputs.defectTable = data['Inputs']['DefectTable']
         return task_node
 
     def parse(self):
